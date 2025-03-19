@@ -8,7 +8,7 @@ A simple application that connects to Gmail, fetches invoices, and organizes the
 - Automatically identify and download invoice attachments from emails
 - Upload invoices to a shared Google Drive with an organized folder structure
 - Structured folders: year/month/username
-- Production-ready with Docker, HTTPS, and AWS deployment support
+- Production-ready with Docker and HTTPS support
 
 ## Requirements
 
@@ -70,84 +70,37 @@ A simple application that connects to Gmail, fetches invoices, and organizes the
 
    The application will be available at http://localhost:5001
 
-## Production Deployment to AWS
+## AWS EC2 Deployment with Docker
 
 ### Prerequisites
 
 1. An AWS account with permissions to create EC2 instances
-2. A domain name (domain.com) with DNS configured to point to your EC2 instance
-3. SSH keys for accessing the EC2 instance
+2. A domain name pointing to your EC2 instance's IP address
+3. SSH keys for securely accessing your EC2 instance
 
-### Deployment Steps
+### Simple Deployment Steps
 
-1. **Launch an EC2 Instance in AWS**
+We provide a script that generates all the necessary deployment files for an AWS EC2 deployment with Docker.
 
-   - Use Amazon Linux 2 AMI
-   - Recommended instance type: t2.micro (or larger depending on load)
-   - Configure security group to allow:
-     - SSH (port 22) from your IP
-     - HTTP (port 80) from anywhere
-     - HTTPS (port 443) from anywhere
-   - Attach an Elastic IP for a static address
-
-2. **Set Up the EC2 Instance**
-
-   Connect to your instance and run the provided setup script:
+1. **Run the deployment script generator**
 
    ```bash
-   scp -i your-key.pem ec2-setup.sh ec2-user@your-instance-ip:/tmp/
-   ssh -i your-key.pem ec2-user@your-instance-ip
-   chmod +x /tmp/ec2-setup.sh
-   /tmp/ec2-setup.sh
+   ./ec2-deploy.sh your-domain.com your-email@example.com
    ```
 
-3. **Clone the Repository on EC2**
+   This will create three files:
+   - `ec2-setup.sh` - Initial EC2 instance setup script
+   - `app-deploy.sh` - Application deployment script
+   - `DEPLOY-EC2.md` - Detailed deployment instructions
 
-   ```bash
-   cd /opt/expense-app
-   git clone <repository-url> .
-   ```
+2. **Follow the instructions in `DEPLOY-EC2.md`**
 
-4. **Configure Production Environment**
-
-   Update the `.env.production` file on your EC2 instance:
-   
-   ```bash
-   # Update Google OAuth credentials for production domain
-   nano .env.production
-   ```
-
-   Ensure these values are set:
-   - `GOOGLE_REDIRECT_URI=https://domain.com/oauth2callback`
-   - Update Google Client ID and Secret if needed
-
-5. **Set Up SSL Certificate**
-
-   ```bash
-   ./init-ssl.sh domain.com your-email@example.com
-   ```
-
-6. **Deploy the Application**
-
-   ```bash
-   docker-compose up -d
-   ```
-
-7. **Verify the Deployment**
-
-   Visit https://domain.com in your browser. The application should load with a valid SSL certificate.
-
-### CI/CD Pipeline Setup
-
-1. **Create GitHub Repository Secrets**
-
-   Add these secrets to your GitHub repository:
-   - `EC2_HOST`: Public IP of your EC2 instance
-   - `EC2_SSH_KEY`: Private SSH key for EC2 access
-
-2. **Push to Main Branch**
-
-   The included GitHub Actions workflow will automatically deploy new changes to your EC2 instance when you push to the main branch.
+   The generated instructions will guide you through:
+   - Setting up your EC2 instance
+   - Installing Docker and Docker Compose
+   - Deploying the application
+   - Configuring SSL certificates
+   - Updating Google OAuth configuration
 
 ## Usage
 
@@ -179,19 +132,6 @@ Shared Drive Root
 - Stop containers: `docker-compose down`
 - Rebuild after changes: `docker-compose up -d --build`
 
-## Maintenance
-
-- SSL certificates will auto-renew via certbot
-- Application updates are deployed via CI/CD
-- Backups run daily at 2am and are stored in `/opt/backups`
-
-## Security Notes
-
-- The application uses OAuth 2.0 to securely access Gmail and Google Drive 
-- No passwords are stored by the application
-- Access tokens are stored locally in the `data` directory
-- All production traffic is encrypted with HTTPS
-
 ## License
 
 This project is licensed under the MIT License - see below for details:
@@ -219,14 +159,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## Contribution
-
-Contributions are welcome! If you'd like to contribute to this project:
-
-1. Fork the repository
-2. Create a new branch for your feature
-3. Add your changes and commit them
-4. Push to your fork and submit a pull request
-
-Please ensure your code follows the existing style and includes appropriate documentation.
