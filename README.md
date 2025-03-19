@@ -75,7 +75,7 @@ A simple application that connects to Gmail, fetches invoices, and organizes the
 ### Prerequisites
 
 1. An AWS account with permissions to create EC2 instances
-2. A domain name (internal.pypeai.com) with DNS configured to point to your EC2 instance
+2. A domain name (domain.com) with DNS configured to point to your EC2 instance
 3. SSH keys for accessing the EC2 instance
 
 ### Deployment Steps
@@ -118,13 +118,13 @@ A simple application that connects to Gmail, fetches invoices, and organizes the
    ```
 
    Ensure these values are set:
-   - `GOOGLE_REDIRECT_URI=https://internal.pypeai.com/oauth2callback`
+   - `GOOGLE_REDIRECT_URI=https://domain.com/oauth2callback`
    - Update Google Client ID and Secret if needed
 
 5. **Set Up SSL Certificate**
 
    ```bash
-   ./init-ssl.sh internal.pypeai.com your-email@example.com
+   ./init-ssl.sh domain.com your-email@example.com
    ```
 
 6. **Deploy the Application**
@@ -135,7 +135,7 @@ A simple application that connects to Gmail, fetches invoices, and organizes the
 
 7. **Verify the Deployment**
 
-   Visit https://internal.pypeai.com in your browser. The application should load with a valid SSL certificate.
+   Visit https://domain.com in your browser. The application should load with a valid SSL certificate.
 
 ### CI/CD Pipeline Setup
 
