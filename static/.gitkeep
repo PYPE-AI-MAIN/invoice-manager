@@ -1,0 +1,9 @@
+# This file ensures the static directory is included in Git
+# even though it might be empty
+# Git normally doesn't track empty directories
+
+# Include all files in this directory
+!*
+
+# But don't include these specific files
+.DS_Store

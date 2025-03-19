@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2>Categories</h2>
+        <p class="text-muted">View invoice categories with counts</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Categories</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Category Name</th>
+                                <th>Invoice Count</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if categories %}
+                                {% for category in categories %}
+                                <tr>
+                                    <td>{{ category.name }}</td>
+                                    <td>{{ category.count }}</td>
+                                    <td>
+                                        <a href="{{ url_for('filter_invoices', category=category.name) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-funnel"></i> View Invoices
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-3">No categories found</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <span>About Categories</span>
+            </div>
+            <div class="card-body">
+                <p>Categories help you organize your invoices by type:</p>
+                <ul>
+                    <li>Invoices are automatically categorized based on the sender's domain</li>
+                    <li>Common categories include:
+                        <ul>
+                            <li>Cloud Services</li>
+                            <li>Software</li>
+                            <li>Hardware</li>
+                            <li>Travel</li>
+                            <li>Payment Services</li>
+                            <li>And more...</li>
+                        </ul>
+                    </li>
+                    <li>Categories are used in monthly reports to group expenses</li>
+                </ul>
+                <p>You can filter invoices by category on the <a href="{{ url_for('list_invoices') }}">Invoices</a> page.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

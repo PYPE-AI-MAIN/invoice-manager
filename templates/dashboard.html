@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="bi bi-speedometer"></i> Dashboard</h4>
+            </div>
+            <div class="card-body">
+                <h5>Welcome {{ user.name }}!</h5>
+                <p>Use this app to fetch invoices from your Gmail account and organize them in your Google Drive.</p>
+                
+                <div class="text-center mt-4">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill"></i> To get started, click the button below to fetch your invoices.
+                    </div>
+                    <p class="text-success"><i class="bi bi-check-circle"></i> Files will be organized in designated Google Drive folders</p>
+                    <a href="{{ url_for('fetch_invoices') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-cloud-arrow-up"></i> Fetch & Organize Invoices
+                    </a>
+                </div>
+                
+                <div class="mt-4">
+                    <h5><i class="bi bi-question-circle"></i> How it works</h5>
+                    <ol>
+                        <li>The app connects to your Gmail using the Google account you logged in with</li>
+                        <li>It searches for emails with attachments that might be invoices</li>
+                        <li>Attachments are extracted and uploaded to your Google Drive</li>
+                        <li>Files are organized in folders by year/month/username</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

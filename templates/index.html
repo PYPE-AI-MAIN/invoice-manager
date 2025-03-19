@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Manager - Home{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title m-0 font-weight-bold">
+                    <i class="bi bi-cloud-arrow-up"></i> Fetch & Upload Invoices
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Fetch invoices from your email for a specific month and upload them to your Google Drive.
+                    Invoices will be organized by categories in the selected month's folder.
+                </p>
+                
+                <form id="fetchInvoiceForm" class="mb-4">
+                    <div class="row gx-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="year" class="form-label">Year</label>
+                            <select class="form-select" id="year" name="year" required>
+                                {% for year in range(now.year, now.year-5, -1) %}
+                                    <option value="{{ year }}">{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="month" class="form-label">Month</label>
+                            <select class="form-select" id="month" name="month" required>
+                                {% for m in range(1, 13) %}
+                                    <option value="{{ m }}" {% if m == now.month %}selected{% endif %}>
+                                        {{ month_names[m-1] }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="sharedDriveId" class="form-label">Shared Drive ID (Optional)</label>
+                        <input type="text" class="form-control" id="sharedDriveId" name="sharedDriveId" 
+                               placeholder="Enter Google Shared Drive ID" value="{{ default_shared_drive_id }}">
+                        <div class="form-text">
+                            Leave empty to use the default from environment settings.
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="fetchBtn" class="btn btn-primary px-4">
+                        <i class="bi bi-cloud-arrow-up me-2"></i> Fetch & Upload Invoices
+                    </button>
+                </form>
+                
+                <div id="statusArea" class="d-none">
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                    </div>
+                    <div id="statusMessage" class="alert"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title m-0 font-weight-bold">
+                    <i class="bi bi-clock-history"></i> Recent Activities
+                </h5>
+                <span class="badge bg-primary" id="activityCount">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="activityList">
+                    <div class="list-group-item text-center p-4 text-muted">
+                        <i class="bi bi-inbox fs-3"></i>
+                        <p class="mt-2">No recent activity</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fetchBtn = document.getElementById('fetchBtn');
+    const statusArea = document.getElementById('statusArea');
+    const statusMessage = document.getElementById('statusMessage');
+    const activityList = document.getElementById('activityList');
+    const activityCount = document.getElementById('activityCount');
+    
+    // Function to add activity to the activity list
+    function addActivity(icon, title, message, timestamp, isSuccess) {
+        // Remove the "no activities" message if it exists
+        if (activityList.querySelector('.text-muted')) {
+            activityList.innerHTML = '';
+        }
+        
+        // Create a new activity item
+        const activityItem = document.createElement('div');
+        activityItem.className = 'list-group-item';
+        activityItem.innerHTML = `
+            <div class="d-flex w-100 justify-content-between align-items-center">
+                <div>
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="bi ${icon} ${isSuccess ? 'text-success' : 'text-danger'} fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">${title}</h6>
+                            <p class="mb-1 text-muted small">${message}</p>
+                        </div>
+                    </div>
+                </div>
+                <small class="text-muted">${timestamp}</small>
+            </div>
+        `;
+        
+        // Add to the top of the list
+        activityList.insertBefore(activityItem, activityList.firstChild);
+        
+        // Update the activity count
+        activityCount.textContent = activityList.querySelectorAll('.list-group-item:not(.text-muted)').length;
+        
+        // Store in local storage for persistence
+        saveActivities();
+    }
+    
+    // Function to save activities to local storage
+    function saveActivities() {
+        const activities = Array.from(activityList.querySelectorAll('.list-group-item:not(.text-muted)')).map(item => item.outerHTML);
+        localStorage.setItem('expenseAppActivities', JSON.stringify(activities));
+        localStorage.setItem('expenseAppActivityCount', activityCount.textContent);
+    }
+    
+    // Function to load activities from local storage
+    function loadActivities() {
+        const activities = JSON.parse(localStorage.getItem('expenseAppActivities') || '[]');
+        const count = localStorage.getItem('expenseAppActivityCount') || '0';
+        
+        if (activities.length > 0) {
+            activityList.innerHTML = activities.join('');
+            activityCount.textContent = count;
+        }
+    }
+    
+    // Load activities on page load
+    loadActivities();
+    
+    // Handle fetch button click
+    fetchBtn.addEventListener('click', function() {
+        const year = document.getElementById('year').value;
+        const month = document.getElementById('month').value;
+        const sharedDriveId = document.getElementById('sharedDriveId').value;
+        
+        // Show status area with loading
+        statusArea.classList.remove('d-none');
+        statusMessage.className = 'alert alert-info';
+        statusMessage.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i> Processing invoices... This may take a moment.';
+        
+        // Disable button to prevent multiple submissions
+        fetchBtn.disabled = true;
+        
+        // Send request to fetch invoices
+        fetch('/invoices/fetch-by-month', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                year: year,
+                month: month,
+                shared_drive_id: sharedDriveId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                // Show error message
+                statusMessage.className = 'alert alert-danger';
+                statusMessage.innerHTML = `
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Error:</strong> ${data.error}
+                `;
+                
+                // Add to activity list
+                addActivity('bi-exclamation-circle', 
+                           `Failed to fetch invoices for ${getMonthName(month)} ${year}`, 
+                           data.error,
+                           new Date().toLocaleString(),
+                           false);
+            } else {
+                // Show success message
+                statusMessage.className = 'alert alert-success';
+                statusMessage.innerHTML = `
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            <i class="bi bi-check-circle-fill fs-3"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1">Success!</h5>
+                            <p>Processed ${data.invoices_count} invoices from ${getMonthName(month)} ${year}.</p>
+                            <p>Saved to folder: <strong>${data.folder_name}</strong></p>
+                            ${data.drive_url ? 
+                                `<a href="${data.drive_url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                    <i class="bi bi-google me-1"></i> View in Google Drive
+                                </a>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                // Add to activity list
+                addActivity('bi-check-circle',
+                           `Invoices fetched for ${getMonthName(month)} ${year}`,
+                           `Processed ${data.invoices_count} invoices and uploaded to ${data.folder_name}`,
+                           new Date().toLocaleString(),
+                           true);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusMessage.className = 'alert alert-danger';
+            statusMessage.innerHTML = `
+                <i class="bi bi-x-circle-fill me-2"></i>
+                <strong>Error:</strong> An unexpected error occurred. Please try again later.
+            `;
+            
+            // Add to activity list
+            addActivity('bi-exclamation-circle',
+                       `System Error - ${getMonthName(month)} ${year}`,
+                       'An unexpected error occurred while processing invoices.',
+                       new Date().toLocaleString(),
+                       false);
+        })
+        .finally(() => {
+            // Re-enable button
+            fetchBtn.disabled = false;
+        });
+    });
+    
+    function getMonthName(monthNumber) {
+        const date = new Date();
+        date.setMonth(monthNumber - 1);
+        return date.toLocaleString('en-US', { month: 'long' });
+    }
+});
+</script>
+{% endblock %}

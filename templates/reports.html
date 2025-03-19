@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block title %}Expense Manager - Reports{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title m-0 font-weight-bold">
+                    <i class="bi bi-file-earmark-bar-graph"></i> Generate Expense Report
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Generate reports to see who is getting reimbursed and analyze your expense data.
+                    Select a period below and choose your preferred format.
+                </p>
+                
+                <form id="reportForm" class="mb-4">
+                    <div class="row gx-3 mb-3">
+                        <div class="col-md-4">
+                            <label for="reportYear" class="form-label">Year</label>
+                            <select class="form-select" id="reportYear" name="reportYear" required>
+                                {% for year in range(now.year, now.year-5, -1) %}
+                                    <option value="{{ year }}">{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="reportMonth" class="form-label">Month</label>
+                            <select class="form-select" id="reportMonth" name="reportMonth" required>
+                                <option value="all">All Months</option>
+                                {% for m in range(1, 13) %}
+                                    <option value="{{ m }}" {% if m == now.month %}selected{% endif %}>
+                                        {{ month_names[m-1] }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="reportFormat" class="form-label">Format</label>
+                            <select class="form-select" id="reportFormat" name="reportFormat" required>
+                                <option value="pdf">PDF</option>
+                                <option value="excel">Excel</option>
+                                <option value="csv">CSV</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="generateReportBtn" class="btn btn-primary px-4">
+                        <i class="bi bi-file-earmark-arrow-down me-2"></i> Generate Report
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title m-0 font-weight-bold">
+                    <i class="bi bi-person-badge"></i> Reimbursement Summary
+                </h5>
+                <div>
+                    <select id="periodFilter" class="form-select form-select-sm" style="display: inline-block; width: auto;">
+                        <option value="all">All Time</option>
+                        <option value="current-month">Current Month</option>
+                        <option value="current-year">Current Year</option>
+                        <option value="last-month">Last Month</option>
+                        <option value="last-year">Last Year</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Person</th>
+                                <th>Invoices</th>
+                                <th>Total Amount</th>
+                                <th>Categories</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reimbursementTableBody">
+                            {% if reimbursements %}
+                                {% for person in reimbursements %}
+                                <tr data-period="{{ person.year }}-{{ '%02d' % person.month if person.month else 'all' }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-person-circle me-2 text-primary"></i>
+                                            <span>{{ person.email }}</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ person.invoice_count }}</td>
+                                    <td class="fw-bold">${{ "%.2f"|format(person.total_amount) }}</td>
+                                    <td>
+                                        {% for category in person.top_categories %}
+                                        <span class="badge bg-light text-dark me-1">{{ category }}</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <a href="/reports/person?email={{ person.email }}&month={{ person.month }}&year={{ person.year }}&format=pdf" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-file-earmark-pdf"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-secondary view-details"
+                                                data-email="{{ person.email }}"
+                                                data-month="{{ person.month }}"
+                                                data-year="{{ person.year }}">
+                                            <i class="bi bi-list-ul"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center p-4 text-muted">
+                                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                        No reimbursement data available
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Person Details Modal -->
+<div class="modal fade" id="personDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-receipt"></i> 
+                    <span id="personName"></span>'s Invoices
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-status"></div>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Vendor</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceDetailsList"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const generateReportBtn = document.getElementById('generateReportBtn');
+    const periodFilter = document.getElementById('periodFilter');
+    const personDetailsModal = new bootstrap.Modal(document.getElementById('personDetailsModal'));
+    
+    // Handle generate report button click
+    generateReportBtn.addEventListener('click', function() {
+        const year = document.getElementById('reportYear').value;
+        const month = document.getElementById('reportMonth').value;
+        const format = document.getElementById('reportFormat').value;
+        
+        // Create URL for report download
+        let url = `/reports/download?format=${format}`;
+        if (month !== 'all') {
+            url += `&month=${month}`;
+        }
+        url += `&year=${year}`;
+        
+        // Navigate to the URL
+        window.location.href = url;
+    });
+    
+    // Handle period filter change
+    periodFilter.addEventListener('change', function() {
+        const value = this.value;
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        
+        // Get all rows
+        const rows = document.querySelectorAll('#reimbursementTableBody tr');
+        
+        // Show/hide rows based on filter
+        rows.forEach(row => {
+            if (!row.dataset.period) return; // Skip rows without period data
+            
+            const [year, month] = row.dataset.period.split('-');
+            
+            switch (value) {
+                case 'all':
+                    row.style.display = '';
+                    break;
+                case 'current-month':
+                    row.style.display = (parseInt(year) === currentYear && parseInt(month) === currentMonth) ? '' : 'none';
+                    break;
+                case 'current-year':
+                    row.style.display = (parseInt(year) === currentYear) ? '' : 'none';
+                    break;
+                case 'last-month':
+                    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+                    row.style.display = (parseInt(year) === lastMonthYear && parseInt(month) === lastMonth) ? '' : 'none';
+                    break;
+                case 'last-year':
+                    row.style.display = (parseInt(year) === currentYear - 1) ? '' : 'none';
+                    break;
+            }
+        });
+    });
+    
+    // Handle view details buttons
+    document.querySelectorAll('.view-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const email = this.dataset.email;
+            const month = this.dataset.month;
+            const year = this.dataset.year;
+            
+            // Set person name in modal
+            document.getElementById('personName').textContent = email;
+            
+            // Show loading in modal
+            const modalStatus = document.querySelector('.modal-status');
+            const invoicesList = document.getElementById('invoiceDetailsList');
+            
+            modalStatus.innerHTML = `
+                <div class="alert alert-info">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        <div>Loading invoice details...</div>
+                    </div>
+                </div>
+            `;
+            
+            invoicesList.innerHTML = '';
+            
+            // Show the modal
+            personDetailsModal.show();
+            
+            // Fetch person invoice details
+            fetch(`/api/person-invoices?email=${encodeURIComponent(email)}&month=${month}&year=${year}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        modalStatus.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Error: ${data.error}
+                            </div>
+                        `;
+                    } else if (data.invoices && data.invoices.length > 0) {
+                        modalStatus.innerHTML = '';
+                        
+                        // Populate invoices table
+                        data.invoices.forEach(invoice => {
+                            const row = document.createElement('tr');
+                            
+                            // Format status with appropriate color
+                            let statusBadge = '';
+                            switch (invoice.status) {
+                                case 'Approved':
+                                    statusBadge = '<span class="badge bg-success">Approved</span>';
+                                    break;
+                                case 'Rejected':
+                                    statusBadge = '<span class="badge bg-danger">Rejected</span>';
+                                    break;
+                                case 'Pending':
+                                default:
+                                    statusBadge = '<span class="badge bg-warning text-dark">Pending</span>';
+                            }
+                            
+                            row.innerHTML = `
+                                <td>${invoice.date}</td>
+                                <td>${invoice.vendor || 'Unknown'}</td>
+                                <td>${invoice.category || 'Uncategorized'}</td>
+                                <td class="fw-bold">$${parseFloat(invoice.amount).toFixed(2)}</td>
+                                <td>${statusBadge}</td>
+                            `;
+                            
+                            invoicesList.appendChild(row);
+                        });
+                    } else {
+                        modalStatus.innerHTML = `
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                No invoices found for this person in the selected period.
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalStatus.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-x-circle me-2"></i>
+                            An unexpected error occurred. Please try again later.
+                        </div>
+                    `;
+                });
+        });
+    });
+});
+</script>
+{% endblock %}

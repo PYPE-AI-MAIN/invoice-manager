@@ -1,0 +1,21 @@
+Flask==2.2.3
+python-dotenv==1.0.0
+apscheduler==3.10.1
+google-api-python-client==2.80.0
+google-auth==2.16.2
+google-auth-oauthlib==1.0.0
+google-auth-httplib2==0.1.0
+Werkzeug==2.2.3
+reportlab==4.0.4
+xlsxwriter==3.1.2
+Pillow==10.0.1
+
+# Production dependencies
+gunicorn==21.2.0
+pyOpenSSL==23.2.0
+requests==2.31.0
+# For HTTPS in development
+pyopenssl==23.2.0
+# For improved security
+flask-talisman==1.1.0
+flask-cors==4.0.0
